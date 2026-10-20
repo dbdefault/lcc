@@ -6,6 +6,7 @@ import json
 from pathlib import Path
 
 import pytest
+from rich.text import Text
 from typer.testing import CliRunner
 
 from lcc.cli import app
@@ -179,8 +180,12 @@ def test_measure_cli_question_reaches_compaction_request(
     assert expected not in result.output
 
 
-def test_measure_cli_help_documents_question_option():
+@pytest.mark.parametrize("force_color", ["0", "1"])
+def test_measure_cli_help_documents_question_option(monkeypatch, force_color):
+    monkeypatch.setenv("FORCE_COLOR", force_color)
     result = CliRunner().invoke(app, ["measure-session", "--help"], color=False)
     assert result.exit_code == 0, result.output
-    assert "--question" in result.output
-    assert "-q" in result.output
+    # Rich can emit ANSI styles even with CliRunner(color=False), notably in CI.
+    help_text = Text.from_ansi(result.output).plain
+    assert "--question" in help_text
+    assert "-q" in help_text
