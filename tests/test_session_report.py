@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pytest
 from typer.testing import CliRunner
 
 from lcc.cli import app
@@ -141,3 +142,45 @@ def test_approximate_count_says_why_in_every_output(tmp_path: Path, monkeypatch)
         out = CliRunner().invoke(app, ["measure-session", str(path), *([flag] if flag else [])])
         assert out.exit_code == 0, out.output
         assert "tiktoken is not installed" in " ".join(out.output.split())
+
+
+@pytest.mark.parametrize(
+    ("options", "expected"),
+    [
+        (
+            ["--question", "Find the parser boundary — 합성 질문"],
+            "Find the parser boundary — 합성 질문",
+        ),
+        (["-q", "Explain the retry failure"], "Explain the retry failure"),
+        ([], "finish the task in this session"),
+    ],
+)
+def test_measure_cli_question_reaches_compaction_request(
+    tmp_path: Path, monkeypatch, options, expected
+):
+    from lcc.relevance import transcript
+
+    monkeypatch.setenv("LCC_DISABLE_NETWORK", "1")
+    seen = []
+    original = transcript.compact_transcript
+
+    def capture_request(request):
+        seen.append(request.question)
+        return original(request)
+
+    monkeypatch.setattr(transcript, "compact_transcript", capture_request)
+    result = CliRunner().invoke(
+        app, ["measure-session", str(_session(tmp_path, 1)), "--json", *options]
+    )
+    assert result.exit_code == 0, result.output
+    assert seen == [expected] * 3
+    report = json.loads(result.output)
+    assert all("error" not in mode for mode in report["modes"])
+    assert expected not in result.output
+
+
+def test_measure_cli_help_documents_question_option():
+    result = CliRunner().invoke(app, ["measure-session", "--help"], color=False)
+    assert result.exit_code == 0, result.output
+    assert "--question" in result.output
+    assert "-q" in result.output
