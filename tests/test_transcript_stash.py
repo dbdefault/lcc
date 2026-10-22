@@ -240,7 +240,7 @@ def test_stash_dir_windows_uses_localappdata(monkeypatch, tmp_path: Path):
     import lcc.relevance.transcript_stash as stash_mod
 
     monkeypatch.delenv("LCC_STASH_DIR", raising=False)
-    monkeypatch.setattr(stash_mod.os, "name", "nt")
+    monkeypatch.setattr(stash_mod, "_is_windows", lambda: True)
     local = tmp_path / "Local"
     monkeypatch.setenv("LOCALAPPDATA", str(local))
 
@@ -259,7 +259,7 @@ def test_stash_dir_posix_uses_xdg_cache(monkeypatch, tmp_path: Path):
     import lcc.relevance.transcript_stash as stash_mod
 
     monkeypatch.delenv("LCC_STASH_DIR", raising=False)
-    monkeypatch.setattr(stash_mod.os, "name", "posix")
+    monkeypatch.setattr(stash_mod, "_is_windows", lambda: False)
     monkeypatch.setattr(stash_mod.Path, "home", classmethod(lambda cls: tmp_path))
     assert stash_dir() == tmp_path / ".cache" / "lcc" / "stash"
 
@@ -268,7 +268,7 @@ def test_put_skips_chmod_on_windows(monkeypatch, tmp_path: Path):
     import lcc.relevance.transcript_stash as stash_mod
 
     monkeypatch.setenv("LCC_STASH_DIR", str(tmp_path / "stash"))
-    monkeypatch.setattr(stash_mod.os, "name", "nt")
+    monkeypatch.setattr(stash_mod, "_is_windows", lambda: True)
 
     def refuse_chmod(*_args, **_kwargs):
         raise AssertionError("put must not call os.chmod on Windows")

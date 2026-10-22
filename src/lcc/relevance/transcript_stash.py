@@ -38,6 +38,10 @@ class StashError(ValueError):
     """A recall that cannot return verified bytes (bad id, missing blob, hash mismatch)."""
 
 
+def _is_windows() -> bool:
+    return os.name == "nt"
+
+
 def stash_dir() -> Path:
     """Default stash root; ``LCC_STASH_DIR`` always wins when set.
 
@@ -47,7 +51,7 @@ def stash_dir() -> Path:
     override = os.environ.get(ENV_DIR)
     if override:
         return Path(override)
-    if os.name == "nt":
+    if _is_windows():
         base = os.environ.get("LOCALAPPDATA") or str(Path.home() / "AppData" / "Local")
         return Path(base) / "lcc" / "stash"
     return Path.home() / ".cache" / "lcc" / "stash"
@@ -60,7 +64,7 @@ def put(text: str) -> str:
     root = stash_dir()
     root.mkdir(mode=0o700, parents=True, exist_ok=True)
     # On Windows os.chmod only toggles the read-only bit; owner-only modes are a POSIX claim.
-    if os.name != "nt":
+    if not _is_windows():
         os.chmod(root, 0o700)
     target = root / digest
     if target.is_file() and hashlib.sha256(target.read_bytes()).hexdigest() == digest:
