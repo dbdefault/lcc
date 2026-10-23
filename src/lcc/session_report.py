@@ -302,7 +302,8 @@ def to_markdown(report: dict[str, Any]) -> str:
 def _p90(values: list[float]) -> float:
     if len(values) < 2:
         return values[0]
-    return statistics.quantiles(values, n=10)[-1]
+    # inclusive: never above the largest observed value (exclusive extrapolates for small n)
+    return statistics.quantiles(values, n=10, method="inclusive")[-1]
 
 
 def measure_directory(path: Path, question: str = DEFAULT_QUESTION) -> dict[str, Any]:

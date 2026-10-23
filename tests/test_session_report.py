@@ -210,7 +210,7 @@ def test_measure_directory_aggregates_median_and_p90_per_mode(tmp_path: Path, mo
     )
     assert modes["rules:stashed"]["n"] == 3
     assert modes["rules:stashed"]["median_reduction"] == stashed[1]
-    assert stashed[1] <= modes["rules:stashed"]["p90_reduction"]
+    assert stashed[1] <= modes["rules:stashed"]["p90_reduction"] <= stashed[-1]
     assert MARKER not in json.dumps(report) and "parser" not in json.dumps(report)
 
 
@@ -243,3 +243,10 @@ def test_cli_measure_session_empty_directory_fails_cleanly(tmp_path: Path):
     result = CliRunner().invoke(app, ["measure-session", str(tmp_path), "--markdown"])
     assert result.exit_code == 2
     assert "no *.jsonl session files" in result.output
+
+
+def test_p90_never_exceeds_the_largest_value():
+    from lcc.session_report import _p90
+
+    assert _p90([0.2, 0.3, 0.4]) <= 0.4
+    assert _p90([0.5]) == 0.5
